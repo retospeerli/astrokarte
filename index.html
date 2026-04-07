@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sternenkarte</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #av-skymap {
+      width: 600px;
+      height: 600px;
+    }
+  </style>
+</head>
+<body>
+  <div id="av-skymap"></div>
+
+  <script>
+    var avSkymapProperties = {
+      location: {
+        lon: 8.682,
+        lat: 50.111,
+        name: 'Frankfurt am Main',
+        tz: 'Europe/Berlin'
+      },
+      deco: 15,
+      size: 600,
+      bgColor: '#ffffff',
+      lang: 'de'
+    };
+  </script>
+  <script src="https://www.astroviewer.net/widgets/widgets/skymap.js"></script>
+</body>
+</html>
