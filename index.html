@@ -3,40 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sternenkarte</title>
+  <title>Sternenkarte Wädenswil</title>
   <style>
-    body {
+    html, body {
       margin: 0;
       padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
       background: #ffffff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
     }
 
     #av-skymap {
-      width: 300px;
-      height: 300px;
+      width: 100vw;
+      height: 100vh;
     }
   </style>
 </head>
 <body>
-  <div id="av-skymap"></div>
-
-  <script>
-    var avSkymapProperties = {
-      location: {
-        lon: 8.55,
-        lat: 47.23,
-        name: 'Wädenswil',
-        tz: 'Europe/Zurich'
-      },
-      deco: 15,
-      size: 600,
-      bgColor: '#ffffff',
-      lang: 'de'
-    };
-  </script>
-  <script src="https://www.astroviewer.net/widgets/widgets/skymap.js"></script>
+  <div id="av-skymap">
+    <script>
+      var avSkymapProperties = {
+        location: {
+          lon: 8.6687,
+          lat: 47.2267,
+          name: 'Wädenswil',
+          tz: 'Europe/Zurich'
+        },
+        deco: 15,
+        size: Math.max(window.innerWidth, window.innerHeight),
+        bgColor: '#ffffff',
+        lang: 'de'
+      };
+    </script>
+    <script src="https://www.astroviewer.net/widgets/widgets/skymap.js"></script>
+  </div>
 </body>
 </html>
