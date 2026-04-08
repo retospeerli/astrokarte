@@ -16,65 +16,52 @@
       font-family: Arial, sans-serif;
     }
 
-    /* Vollflächiger Sichtbereich */
     #viewport {
       position: fixed;
       inset: 0;
-      width: 100vw;
-      height: 100vh;
       overflow: auto;
       background: #000;
-      outline: none;
     }
 
-    /* Enthält die eigentliche Sternenkarte */
-    #content {
+    #canvas {
       position: relative;
       width: 100vw;
       height: 100vh;
       background: #000;
     }
 
-    #av-skymap {
-      width: 100%;
-      height: 100%;
+    #mapFrame {
+      display: block;
+      border: 0;
       background: #000;
     }
 
-    /* Kleine Info oben links */
     #hud {
       position: fixed;
       top: 10px;
       left: 10px;
-      z-index: 9999;
-      background: rgba(0, 0, 0, 0.65);
+      z-index: 1000;
+      background: rgba(0,0,0,0.65);
       color: #fff;
       padding: 8px 10px;
       border-radius: 8px;
       font-size: 14px;
       line-height: 1.35;
       user-select: none;
-      pointer-events: none;
     }
 
-    #hud strong {
-      display: inline-block;
-      min-width: 72px;
-    }
-
-    /* Optional dezente Buttons */
     #controls {
       position: fixed;
       top: 10px;
       right: 10px;
-      z-index: 9999;
+      z-index: 1000;
       display: flex;
       gap: 6px;
     }
 
     #controls button {
       border: 1px solid rgba(255,255,255,0.2);
-      background: rgba(20,20,20,0.8);
+      background: rgba(20,20,20,0.85);
       color: #fff;
       padding: 8px 10px;
       border-radius: 8px;
@@ -83,32 +70,36 @@
     }
 
     #controls button:hover {
-      background: rgba(40,40,40,0.9);
+      background: rgba(40,40,40,0.95);
     }
   </style>
 </head>
 <body>
   <div id="hud">
-    <div><strong>Zoom:</strong> <span id="zoomLabel">100%</span></div>
-    <div><strong>Tasten:</strong> + / - / 0 / Pfeile</div>
+    Zoom: <span id="zoomLabel">100%</span><br>
+    Tasten: + / - / 0 / Pfeile
   </div>
 
   <div id="controls">
-    <button id="zoomOutBtn" title="Verkleinern">−</button>
-    <button id="resetBtn" title="Standardgrösse">100%</button>
-    <button id="zoomInBtn" title="Vergrössern">+</button>
+    <button id="zoomOutBtn" aria-label="Verkleinern">−</button>
+    <button id="resetBtn" aria-label="Standardgröße">100%</button>
+    <button id="zoomInBtn" aria-label="Vergrößern">+</button>
   </div>
 
   <div id="viewport" tabindex="0">
-    <div id="content">
-      <div id="av-skymap"></div>
+    <div id="canvas">
+      <iframe
+        id="mapFrame"
+        title="Sternenkarte Wädenswil"
+        src="https://www.astroviewer.net/widgets/en/skymap.php?lon=8.6687&lat=47.2267&tz=Europe/Zurich&lang=de&size=1000&bgColor=000000">
+      </iframe>
     </div>
   </div>
 
   <script>
     const viewport = document.getElementById('viewport');
-    const content = document.getElementById('content');
-    const mapContainer = document.getElementById('av-skymap');
+    const canvas = document.getElementById('canvas');
+    const frame = document.getElementById('mapFrame');
     const zoomLabel = document.getElementById('zoomLabel');
 
     let zoom = 1;
@@ -116,98 +107,53 @@
     const maxZoom = 3;
     const zoomStep = 0.25;
 
-    function getBaseSize() {
-      return {
-        width: window.innerWidth,
-        height: window.innerHeight
-      };
-    }
+    const BASE_SIZE = 1000; // AstroViewer arbeitet robust mit fixer Widget-Größe
 
-    function getMapSize() {
-      const base = getBaseSize();
-      return {
-        width: Math.round(base.width * zoom),
-        height: Math.round(base.height * zoom),
-        astroSize: Math.round(Math.max(base.width, base.height) * zoom)
-      };
-    }
+    function updateLayout(keepCenter = true) {
+      const oldWidth = canvas.offsetWidth || window.innerWidth;
+      const oldHeight = canvas.offsetHeight || window.innerHeight;
+      const oldCenterX = viewport.scrollLeft + viewport.clientWidth / 2;
+      const oldCenterY = viewport.scrollTop + viewport.clientHeight / 2;
 
-    function updateHUD() {
+      const scaledWidth = Math.round(BASE_SIZE * zoom);
+      const scaledHeight = Math.round(BASE_SIZE * zoom);
+
+      const width = Math.max(window.innerWidth, scaledWidth);
+      const height = Math.max(window.innerHeight, scaledHeight);
+
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+
+      frame.style.width = scaledWidth + 'px';
+      frame.style.height = scaledHeight + 'px';
+
+      // Zentriert die Karte innerhalb der verfügbaren Fläche
+      frame.style.position = 'absolute';
+      frame.style.left = Math.max(0, (width - scaledWidth) / 2) + 'px';
+      frame.style.top = Math.max(0, (height - scaledHeight) / 2) + 'px';
+
       zoomLabel.textContent = Math.round(zoom * 100) + '%';
+
+      if (keepCenter) {
+        const ratioX = oldCenterX / oldWidth;
+        const ratioY = oldCenterY / oldHeight;
+
+        const newCenterX = width * ratioX;
+        const newCenterY = height * ratioY;
+
+        viewport.scrollLeft = Math.max(0, newCenterX - viewport.clientWidth / 2);
+        viewport.scrollTop = Math.max(0, newCenterY - viewport.clientHeight / 2);
+      } else {
+        viewport.scrollLeft = Math.max(0, (width - viewport.clientWidth) / 2);
+        viewport.scrollTop = Math.max(0, (height - viewport.clientHeight) / 2);
+      }
     }
 
-    function clearOldWidgetScripts() {
-      document.querySelectorAll('script[data-skymap-loader="true"]').forEach(el => el.remove());
-    }
-
-    function renderMap(keepCenter = true) {
-      const prevCenterX = viewport.scrollLeft + viewport.clientWidth / 2;
-      const prevCenterY = viewport.scrollTop + viewport.clientHeight / 2;
-      const prevWidth = content.offsetWidth || window.innerWidth;
-      const prevHeight = content.offsetHeight || window.innerHeight;
-
-      const { width, height, astroSize } = getMapSize();
-
-      content.style.width = width + 'px';
-      content.style.height = height + 'px';
-
-      mapContainer.innerHTML = '';
-      clearOldWidgetScripts();
-
-      window.avSkymapProperties = {
-        location: {
-          lon: 8.6687,
-          lat: 47.2267,
-          name: 'Wädenswil',
-          tz: 'Europe/Zurich'
-        },
-        deco: 15,
-        size: astroSize,
-        bgColor: '#000000',
-        lang: 'de'
-      };
-
-      const script = document.createElement('script');
-      script.src = 'https://www.astroviewer.net/widgets/widgets/skymap.js?v=' + Date.now();
-      script.dataset.skymapLoader = 'true';
-      script.onload = () => {
-        if (keepCenter) {
-          const ratioX = prevCenterX / prevWidth;
-          const ratioY = prevCenterY / prevHeight;
-
-          const newCenterX = width * ratioX;
-          const newCenterY = height * ratioY;
-
-          viewport.scrollLeft = Math.max(0, newCenterX - viewport.clientWidth / 2);
-          viewport.scrollTop = Math.max(0, newCenterY - viewport.clientHeight / 2);
-        } else {
-          viewport.scrollLeft = Math.max(0, (width - viewport.clientWidth) / 2);
-          viewport.scrollTop = Math.max(0, (height - viewport.clientHeight) / 2);
-        }
-      };
-
-      mapContainer.appendChild(script);
-      updateHUD();
-    }
-
-    function setZoom(newZoom) {
-      const clamped = Math.max(minZoom, Math.min(maxZoom, newZoom));
-      if (clamped === zoom) return;
-      zoom = clamped;
-      renderMap(true);
-    }
-
-    function zoomIn() {
-      setZoom(zoom + zoomStep);
-    }
-
-    function zoomOut() {
-      setZoom(zoom - zoomStep);
-    }
-
-    function resetZoom() {
-      zoom = 1;
-      renderMap(true);
+    function setZoom(value) {
+      const next = Math.max(minZoom, Math.min(maxZoom, value));
+      if (next === zoom) return;
+      zoom = next;
+      updateLayout(true);
     }
 
     function pan(dx, dy) {
@@ -218,75 +164,42 @@
       });
     }
 
-    document.getElementById('zoomInBtn').addEventListener('click', zoomIn);
-    document.getElementById('zoomOutBtn').addEventListener('click', zoomOut);
-    document.getElementById('resetBtn').addEventListener('click', resetZoom);
-
-    window.addEventListener('resize', () => {
-      renderMap(true);
+    document.getElementById('zoomInBtn').addEventListener('click', () => setZoom(zoom + zoomStep));
+    document.getElementById('zoomOutBtn').addEventListener('click', () => setZoom(zoom - zoomStep));
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      zoom = 1;
+      updateLayout(true);
     });
+
+    window.addEventListener('resize', () => updateLayout(true));
 
     document.addEventListener('keydown', (e) => {
       const step = 80;
 
       if (e.key === '+' || e.key === '=') {
         e.preventDefault();
-        zoomIn();
-        return;
-      }
-
-      if (e.key === '-' || e.key === '_') {
+        setZoom(zoom + zoomStep);
+      } else if (e.key === '-' || e.key === '_') {
         e.preventDefault();
-        zoomOut();
-        return;
-      }
-
-      if (e.key === '0') {
+        setZoom(zoom - zoomStep);
+      } else if (e.key === '0') {
         e.preventDefault();
-        resetZoom();
-        return;
-      }
-
-      if (e.key === 'ArrowLeft') {
+        zoom = 1;
+        updateLayout(true);
+      } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         pan(-step, 0);
-        return;
-      }
-
-      if (e.key === 'ArrowRight') {
+      } else if (e.key === 'ArrowRight') {
         e.preventDefault();
         pan(step, 0);
-        return;
-      }
-
-      if (e.key === 'ArrowUp') {
+      } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         pan(0, -step);
-        return;
-      }
-
-      if (e.key === 'ArrowDown') {
+      } else if (e.key === 'ArrowDown') {
         e.preventDefault();
         pan(0, step);
-        return;
       }
     });
 
-    /* Optional: Zoomen mit Mausrad + Ctrl */
-    viewport.addEventListener('wheel', (e) => {
-      if (!e.ctrlKey) return;
-      e.preventDefault();
-
-      if (e.deltaY < 0) {
-        zoomIn();
-      } else {
-        zoomOut();
-      }
-    }, { passive: false });
-
-    /* Start */
-    renderMap(false);
-    viewport.focus();
-  </script>
-</body>
-</html>
+    updateLayout(false);
+    viewport
